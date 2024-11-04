@@ -1,0 +1,78 @@
+https://docs.fileformat.com/
+
+- ext4 ★★★★
+    - Vorsicht: Einige Blöcke müssen frei bleiben
+        - 4 und 8193
+    - Andere Filesysteme:
+        - btrfs
+            - Muss größer sein
+            - raid
+        - vFAT
+            - Sektoren: 38-
+    - FAT image (richtig gut: defekte Sektoren)
+- sqlite3 ★★★★
+    - https://www.sqlite.org/fileformat.html
+    - Ziemlich gut. Sektoren können hinzugefügt werden, ohne, dass diese genutzt werden.
+- zip / docx / libreoffice ★★★★
+    - https://en.wikipedia.org/wiki/ZIP_(file_format)
+    - ggf. können hier Dateien versteckt werden
+    - durch doppelte Namensvergabe
+    - Index kann manipuliert werden
+    - Spannend: ZIP kann auch ohne Komprimierung, ggf. kann man damit doppelte
+    - APK
+    - docx/xlsx/pptx
+    - odt/ods
+    - jar
+    - epub
+    - xpi (firefox addons)
+    - mit `zipalign` `zipdetails` testen
+- tar ★★★★
+    - doppelte Namensvergabe
+    - Verstecken mit .
+    - backup Header (geht also)
+    - aufstückeln, so dass Dateien sichtbar werden
+    - Geht durch anhängen, allerdings wäre eine Verteilung der Daten auf die unterschiedlichen Dateien gut.
+- elf ★★★
+    - Variable kompilieren
+- bash ★★
+    - `exit`
+- png / jpeg
+    - Ggf. zu leicht zu erkennen
+    - exif
+    - png ★
+        - würde wohl gehen
+- mp3
+    - data / comments
+    - ID3-Tags hinten
+    - ggf. leicht erkennbar
+- ogg
+    - ggf. mit falscher CRC
+- ar
+- bzip2
+    - Anhängen klappt
+- xml
+    - `<[CDATA[ -- ]]>`
+- c/cpp/...
+    - `#if 0 / endif`
+- php
+    - `<?php -- ?>`
+    - `$c = <<<ENDOFDATA` (not working `$`)
+    - `__halt_compiler();`
+- html
+    - `<textarea style="display:none">...</textarea>`
+    - `<script type="application/truecrypt">..</script>`
+    - `<!-- -->`
+- python
+    - `"""`
+- wav
+    - ggf. INFO chunks
+- perl
+    - `=begin .. =cut` (nicht binary save)
+    - `__END__`
+    - `___DATA__`
+    - trick: `___DATA__ = 1`
+- ruby
+    - `__END__`
+- ISO
+- pyc
+- mp4 / mkv
