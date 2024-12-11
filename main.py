@@ -47,15 +47,13 @@ if args.help:
 
 for module_name in args.modules:
     module = registry.get(module_name)
-    if hasattr(module, 'setup'):
-        module.setup(args, hook_manager)
+    module.setup(args, hook_manager)
 
 chunks = []
 
 for module_name in args.modules:
     module = registry.get(module_name)
-
-    chunks += [ c for c in module.get_chunks() ]
+    chunks += module.get_chunks()
 
 fixed_chunks = [ c for c in chunks if isinstance(c, FixedChunk) ]
 flexible_chunks = [ c for c in chunks if isinstance(c, FlexibleChunk) ]
@@ -67,8 +65,7 @@ for chunk in fixed_chunks:
     end = chunk.position + chunk.size
 
     if tree.overlaps(start, end):
-        raise Exception(f"found overlapping chunk: {(start, end)}")
-        continue
+        raise Exception(f"Found overlapping chunk at position {(start, end)}")
 
     tree.addi(start, end, chunk)
     if start >= 0:
@@ -76,17 +73,17 @@ for chunk in fixed_chunks:
 
 for chunk in flexible_chunks:
     size = chunk.size
-    start = chunk.position[0] or 0
-    end = chunk.position[1] if 1 in chunk.position else (tree.end() + size)
+    first_position = chunk.position[0] or 0
+    last_position = chunk.position[1] or tree.end()
 
-    intervals = tree.overlap(start, end + size)
-    positions = set([ start, end ])
-    positions.update([ i.end for i in intervals ])
+    intervals = tree.overlap(first_position, last_position)
 
-    positions = list(positions)
-    positions.sort()
+    positions = set([ first_position ])
+    positions.update([
+        i.end for i in intervals if i.end <= last_position
+    ])
 
-    for position in positions:
+    for position in sorted(positions):
         start = position
         end = position + size
         if not tree.overlaps(start, end):
@@ -95,32 +92,25 @@ for chunk in flexible_chunks:
                 hook_manager.trigger('place_chunk', start, end, chunk)
             break
     else:
-        raise Exception("no free space for chunk")
-
-#print('tree', tree)
+        raise Exception("No free space for chunk")
 
 new_file_size = tree.end() - min(0, tree.begin())
 tree.slice(0)
 end_interval = tree.overlap(tree.begin(), 0)
+tree.remove_overlap(tree.begin(), 0)
 
 for interval in end_interval:
     start = interval.begin + new_file_size
     end = interval.end + new_file_size
     chunk = interval.data
-    hook_manager.trigger('place_chunk', start, end, chunk)
     tree.addi(start, end, chunk)
-
-tree.remove_overlap(tree.begin(), 0)
-
-print(tree)
+    hook_manager.trigger('place_chunk', start, end, chunk)
 
 with open(args.output, 'wb') as f:
     for interval in tree:
-        print(interval)
         chunk = interval.data
         offset = chunk.offset
         size = chunk.size
         data = chunk.data[offset:offset + size]
-        print(interval.begin)
         f.seek(interval.begin)
         f.write(data)

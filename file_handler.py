@@ -11,6 +11,10 @@ class FileHandler(ABC):
         pass
 
     @abstractmethod
+    def setup(self, args, hook_manager: HookManager) -> None:
+        pass
+
+    @abstractmethod
     def param(self, parser: ArgumentParser) -> None:
         pass
 

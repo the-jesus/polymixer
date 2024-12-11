@@ -2,8 +2,12 @@ from file_handler import FileHandler
 from argparse import ArgumentParser
 from typing import List
 from chunk import Chunk, FixedChunk, FlexibleChunk
+from hook_manager import HookManager
 
 class PDFHandler(FileHandler):
+    def setup(self, args, hook_manager: HookManager) -> None:
+        pass
+
     def param(self, parser: ArgumentParser) -> None:
         pdf_group = parser.add_argument_group("PDF Options")
         pdf_group.add_argument("--pdf-file", nargs=None, help="Specify a file and its arguments.")

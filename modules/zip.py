@@ -50,7 +50,6 @@ class CentralDirectoryFileHeader:
 
     @classmethod
     def match(cls, data: bytes):
-        print(data[:4])
         return data[:4] == b'\x50\x4b\x01\x02'
 
     def size(self) -> int:
@@ -64,13 +63,18 @@ class CentralDirectoryFileHeader:
         return f"<CDFH({self.signature}, {self.offset})>"
 
 class ZIPHandler(FileHandler):
-    def setup(self, args, hook_manager: HookManager):
+    def setup(self, args, hook_manager: HookManager) -> None:
         self.filepath = args.zip_file
+        self.first_header = args.zip_first_header
 
         hook_manager.register('place_chunk', self.place_chunk)
 
-    def place_chunk(self, start: int, end: int, chunk: Chunk):
-        #if CentralDirectoryFileHeader.match(chunk.data):
+    def param(self, parser: ArgumentParser) -> None:
+        pdf_group = parser.add_argument_group("ZIP Options")
+        pdf_group.add_argument("--zip-file", nargs=None, help="Specify a file and its arguments.")
+        pdf_group.add_argument("--zip-first-header", action='store_true', help="If set the zip content starts at position zero.")
+
+    def place_chunk(self, start: int, end: int, chunk: Chunk) -> None:
         if chunk.extra and isinstance(chunk.extra, CentralDirectoryFileHeader):
             dchunk = self.directory_chunk
             new_block_position = start.to_bytes(4, byteorder='little')
@@ -78,7 +82,6 @@ class ZIPHandler(FileHandler):
             # I think this is quite inefficient
             data = dchunk.data[0:pos + 42] + new_block_position + dchunk.data[pos + 46:]
             dchunk.data = data
-            print('after', dchunk.data[pos + 42:pos + 46])
 
         if chunk.extra and isinstance(chunk.extra, EndOfCentralDirectoryRecord):
             dchunk = self.directory_chunk
@@ -86,10 +89,6 @@ class ZIPHandler(FileHandler):
             # I think this is quite inefficient
             data = dchunk.data[0:-6] + new_block_position + dchunk.data[-2:]
             dchunk.data = data
-
-    def param(self, parser: ArgumentParser) -> None:
-        pdf_group = parser.add_argument_group("ZIP Options")
-        pdf_group.add_argument("--zip-file", nargs=None, help="Specify a file and its arguments.")
 
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
@@ -100,13 +99,13 @@ class ZIPHandler(FileHandler):
         eocd = self._parse_eocd()
         file_list = self._get_files(eocd)
 
-        #first=True
-        first=False # turn of this feature for testing
+        first=self.first_header
 
         chunks = [];
         for file in file_list:
             offset = file.offset
             size = file.size() + 4 # ????
+
             if first:
                 chunks.append(FixedChunk(
                     position=offset,
@@ -118,7 +117,7 @@ class ZIPHandler(FileHandler):
                 first=False
             else:
                 chunks.append(FlexibleChunk(
-                    position=(offset, ),
+                    position=(offset, None),
                     size=size,
                     offset=offset,
                     data=data,
