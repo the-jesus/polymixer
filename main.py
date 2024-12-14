@@ -1,5 +1,3 @@
-from memory_profiler import profile
-
 from typing import Callable, Dict, List, Type
 from file_handler import FileHandler
 from hook_manager import HookManager
@@ -25,7 +23,6 @@ registry.register('shell', ShellHandler())
 registry.register('truecrypt', TruecryptHandler())
 registry.register('ext2', Ext2Handler())
 
-@profile
 def main():
     hook_manager = HookManager()
 

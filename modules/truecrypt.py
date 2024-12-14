@@ -1,4 +1,3 @@
-from memory_profiler import profile
 from typing import List
 from file_handler import FileHandler
 from chunk import Chunk, FixedChunk, FlexibleChunk
@@ -23,7 +22,6 @@ class TruecryptHandler(FileHandler):
             # reencrypt the key with the new salt
             pass
 
-    @profile
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
             data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_COPY)

@@ -1,4 +1,3 @@
-from memory_profiler import profile
 from file_handler import FileHandler
 from argparse import ArgumentParser
 from typing import List
@@ -55,11 +54,17 @@ class CentralDirectoryFileHeader:
         return data[:4] == b'\x50\x4b\x01\x02'
 
     def size(self) -> int:
-        return self.compressed_size \
+        # FIXME: This calculation is incorrect because it uses data
+        # from the central directory entry, while the local header might
+        # contain different values. Notably, the local header entries do
+        # not include a comment field, explaining the unexpected four-byte
+        # gap. Review and align the calculation method with the local
+        # header's structure.
+        return 30 \
              + self.filename_length \
-             + self.comment_length \
              + self.extra_length \
-             + 30
+             + self.comment_length + 4 \
+             + self.compressed_size
 
     def __repr__(self) -> str:
         return f"<CDFH({self.signature}, {self.offset})>"
@@ -88,7 +93,6 @@ class ZIPHandler(FileHandler):
             dchunk = self.directory_chunk
             dchunk.data[-6:-2] = new_block_position
 
-    @profile
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
             data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_COPY)
@@ -103,7 +107,7 @@ class ZIPHandler(FileHandler):
         chunks = [];
         for file in file_list:
             offset = file.offset
-            size = file.size() + 4 # ????
+            size = file.size()
 
             if first:
                 chunks.append(FixedChunk(
