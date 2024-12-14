@@ -10,7 +10,7 @@ class PDFHandler(FileHandler):
 
     def param(self, parser: ArgumentParser) -> None:
         pdf_group = parser.add_argument_group("PDF Options")
-        pdf_group.add_argument("--pdf-file", nargs=None, help="Specify a file and its arguments.")
+        pdf_group.add_argument("--pdf-file", nargs=None, help="Specify a file and its arguments.", required=True)
 
     def get_chunks(self) -> List[Chunk]:
         data = b'P' * 3000

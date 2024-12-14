@@ -9,7 +9,7 @@ class ShellHandler(FileHandler):
 
     def param(self, parser: ArgumentParser) -> None:
         shell_group = parser.add_argument_group("Shell Options")
-        shell_group.add_argument("--shell-file", nargs=None, help="Specify a file and its arguments.")
+        shell_group.add_argument("--shell-file", nargs=None, help="Specify a file and its arguments.", required=True)
 
     def get_chunks(self) -> List[Chunk]:
         with open(self.file, 'rb') as f:

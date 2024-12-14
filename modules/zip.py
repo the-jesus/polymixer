@@ -1,9 +1,11 @@
+from memory_profiler import profile
 from file_handler import FileHandler
 from argparse import ArgumentParser
 from typing import List
 from chunk import FixedChunk, Chunk, FlexibleChunk
 from hook_manager import HookManager
 import struct
+import mmap
 
 class EndOfCentralDirectoryRecord:
     def __init__(self, data: bytes):
@@ -71,28 +73,25 @@ class ZIPHandler(FileHandler):
 
     def param(self, parser: ArgumentParser) -> None:
         pdf_group = parser.add_argument_group("ZIP Options")
-        pdf_group.add_argument("--zip-file", nargs=None, help="Specify a file and its arguments.")
+        pdf_group.add_argument("--zip-file", nargs=None, help="Specify a file and its arguments.", required=True)
         pdf_group.add_argument("--zip-first-header", action='store_true', help="If set the zip content starts at position zero.")
 
     def place_chunk(self, start: int, end: int, chunk: Chunk) -> None:
         if chunk.extra and isinstance(chunk.extra, CentralDirectoryFileHeader):
-            dchunk = self.directory_chunk
             new_block_position = start.to_bytes(4, byteorder='little')
             pos = chunk.extra.pos
-            # I think this is quite inefficient
-            data = dchunk.data[0:pos + 42] + new_block_position + dchunk.data[pos + 46:]
-            dchunk.data = data
+            dchunk = self.directory_chunk
+            dchunk.data[pos + 42:pos + 46] = new_block_position
 
         if chunk.extra and isinstance(chunk.extra, EndOfCentralDirectoryRecord):
-            dchunk = self.directory_chunk
             new_block_position = start.to_bytes(4, byteorder='little')
-            # I think this is quite inefficient
-            data = dchunk.data[0:-6] + new_block_position + dchunk.data[-2:]
-            dchunk.data = data
+            dchunk = self.directory_chunk
+            dchunk.data[-6:-2] = new_block_position
 
+    @profile
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
-            data = f.read()
+            data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_COPY)
 
         filesize = len(data)
 

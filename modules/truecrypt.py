@@ -1,8 +1,10 @@
+from memory_profiler import profile
 from typing import List
 from file_handler import FileHandler
 from chunk import Chunk, FixedChunk, FlexibleChunk
 from argparse import ArgumentParser
 from hook_manager import HookManager
+import mmap
 
 class TruecryptHandler(FileHandler):
     def setup(self, args, hook_manager: HookManager):
@@ -13,7 +15,7 @@ class TruecryptHandler(FileHandler):
 
     def param(self, parser: ArgumentParser) -> None:
         truecrypt_group = parser.add_argument_group("TrueCrypt Options")
-        truecrypt_group.add_argument("--truecrypt-file", nargs=None, help="Specify the source TrueCrypt container.")
+        truecrypt_group.add_argument("--truecrypt-file", nargs=None, help="Specify the source TrueCrypt container.", required=True)
         truecrypt_group.add_argument("--truecrypt-new-salt", action='store_true', help="Enables re-encryption of the key using the specified salt.")
 
     def place_chunk(self, start: int, end: int, chunk: Chunk) -> None:
@@ -21,9 +23,10 @@ class TruecryptHandler(FileHandler):
             # reencrypt the key with the new salt
             pass
 
+    @profile
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
-            data = f.read()
+            data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_COPY)
             image_size = f.seek(0, 2)
 
         header_size = 128 * 1024
