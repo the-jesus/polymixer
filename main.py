@@ -14,6 +14,7 @@ from modules.random import RandomHandler
 from modules.shell import ShellHandler
 from modules.truecrypt import TruecryptHandler
 from modules.ext2 import Ext2Handler
+from modules.png2 import PNGHandler
 
 registry = ModuleRegistry()
 registry.register('pdf', PDFHandler())
@@ -22,6 +23,7 @@ registry.register('random', RandomHandler())
 registry.register('shell', ShellHandler())
 registry.register('truecrypt', TruecryptHandler())
 registry.register('ext2', Ext2Handler())
+registry.register('png', PNGHandler())
 
 def main():
     hook_manager = HookManager()
@@ -66,6 +68,8 @@ def main():
     for chunk in fixed_chunks:
         start = chunk.position
         end = chunk.position + chunk.size
+
+        hook_manager.trigger('new_chunk', start, end, chunk)
 
         if tree.overlaps(start, end):
             raise Exception(f"Found overlapping chunk at position {(start, end)}")
