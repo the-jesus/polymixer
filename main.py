@@ -1,3 +1,5 @@
+#from memory_profiler import profile
+
 from typing import Callable, Dict, List, Type
 from file_handler import FileHandler
 from hook_manager import HookManager
@@ -25,6 +27,7 @@ registry.register('truecrypt', TruecryptHandler())
 registry.register('ext2', Ext2Handler())
 registry.register('png', PNGHandler())
 
+#@profile
 def main():
     hook_manager = HookManager()
 
@@ -69,14 +72,12 @@ def main():
         start = chunk.position
         end = chunk.position + chunk.size
 
-        hook_manager.trigger('new_chunk', start, end, chunk)
-
         if tree.overlaps(start, end):
             raise Exception(f"Found overlapping chunk at position {(start, end)}")
 
         tree.addi(start, end, chunk)
         if start >= 0:
-            hook_manager.trigger('place_chunk', start, end, chunk)
+            hook_manager.trigger('placing:chunk', start, end, chunk)
 
     for chunk in flexible_chunks:
         size = chunk.size
@@ -96,7 +97,7 @@ def main():
             if not tree.overlaps(start, end):
                 tree.addi(start, end, chunk)
                 if start >= 0:
-                    hook_manager.trigger('place_chunk', start, end, chunk)
+                    hook_manager.trigger('placing:chunk', start, end, chunk)
                 break
         else:
             raise Exception("No free space for chunk")
@@ -111,9 +112,12 @@ def main():
         end = interval.end + new_file_size
         chunk = interval.data
         tree.addi(start, end, chunk)
-        hook_manager.trigger('place_chunk', start, end, chunk)
+        hook_manager.trigger('placing:chunk', start, end, chunk)
+
+    hook_manager.trigger('placing:complete', tree)
 
     with open(args.output, 'wb') as f:
+        f.truncate()
         for interval in tree:
             chunk = interval.data
             offset = chunk.offset

@@ -7,7 +7,7 @@ import random
 
 class RandomHandler(FileHandler):
     def setup(self, args, hook_manager: HookManager):
-        hook_manager.register('place_chunk', self.place)
+        hook_manager.register('placing:chunk', self.place)
         pass
 
     def place(self, start, end, chunk) -> None:

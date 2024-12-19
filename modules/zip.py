@@ -74,7 +74,7 @@ class ZIPHandler(FileHandler):
         self.filepath = args.zip_file
         self.first_header = args.zip_first_header
 
-        hook_manager.register('place_chunk', self.place_chunk)
+        hook_manager.register('placing:chunk', self.place_chunk)
 
     def param(self, parser: ArgumentParser) -> None:
         pdf_group = parser.add_argument_group("ZIP Options")
