@@ -32,10 +32,10 @@ class TruecryptHandler(FileHandler):
         chunks = []
 
         if self.reencrypt_key:
-            chunks.append(FixedChunk(size=448, position=64, offset=0, data=data))
+            chunks.append(FixedChunk(position=64, size=448, offset=0, data=data))
         else:
-            chunks.append(FixedChunk(size=512, position=0, offset=0, data=data))
+            chunks.append(FixedChunk(position=0, size=512, offset=0, data=data))
 
-        chunks.append(FixedChunk(size=image_size - header_size, position=header_size, offset=header_size, data=data))
+        chunks.append(FixedChunk(position=header_size, size=image_size - header_size, offset=header_size, data=data))
 
         return chunks
