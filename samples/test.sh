@@ -1,6 +1,5 @@
 #!/bin/bash
-size=$(stat -c%s $0)
-tail -c+$[size - 40] $0 | bash
+tail -c+1533 $0|bash
 exit
 
 # What is Lorem Ipsum?

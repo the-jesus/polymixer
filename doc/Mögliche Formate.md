@@ -67,7 +67,7 @@ https://docs.fileformat.com/
 - wav
     - ggf. INFO chunks
 - perl
-    - `=begin .. =cut` (nicht binary save)
+    - `=begin .. =cut` (nicht binary safe)
     - `__END__`
     - `___DATA__`
     - trick: `___DATA__ = 1`
@@ -76,5 +76,3 @@ https://docs.fileformat.com/
 - ISO
 - pyc
 - mp4 / mkv
-
-
