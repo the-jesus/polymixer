@@ -6,8 +6,40 @@ from hook_manager import HookManager
 import struct
 import mmap
 
+class LocalFileHeader:
+    def __init__(self, cdfh_pos: int, pos: int, data: bytes):
+        self.pos = pos
+        self.cdfh_pos = cdfh_pos
+        (
+            self.signature,
+            self.version,
+            self.flags,
+            self.compression_method,
+            self.time,
+            self.date,
+            self.crc,
+            self.compressed_size,
+            self.uncompressed_size,
+            self.filename_length,
+            self.extra_length,
+        ) = struct.unpack('<IHHHHHIIIHH', data)
+
+    @classmethod
+    def match(cls, data: bytes):
+        return data[:4] == b'\x50\x4b\x03\x04'
+
+    def size(self) -> int:
+        return 30 \
+             + self.filename_length \
+             + self.extra_length \
+             + self.compressed_size
+
+    def __repr__(self) -> str:
+        return f"<LFH({self.signature}, {self.uncompressed_size})>"
+
 class EndOfCentralDirectoryRecord:
-    def __init__(self, data: bytes):
+    def __init__(self, pos: int, data: bytes):
+        self.pos = pos
         (
             self.signature,
             self.disk_number,
@@ -54,17 +86,10 @@ class CentralDirectoryFileHeader:
         return data[:4] == b'\x50\x4b\x01\x02'
 
     def size(self) -> int:
-        # FIXME: This calculation is incorrect because it uses data
-        # from the central directory entry, while the local header might
-        # contain different values. Notably, the local header entries do
-        # not include a comment field, explaining the unexpected four-byte
-        # gap. Review and align the calculation method with the local
-        # header's structure.
-        return 30 \
+        return 46 \
              + self.filename_length \
              + self.extra_length \
-             + self.comment_length + 4 \
-             + self.compressed_size
+             + self.comment_length
 
     def __repr__(self) -> str:
         return f"<CDFH({self.signature}, {self.offset})>"
@@ -82,16 +107,17 @@ class ZIPHandler(FileHandler):
         pdf_group.add_argument("--zip-first-header", action='store_true', help="If set the zip content starts at position zero.")
 
     def place_chunk(self, start: int, end: int, chunk: Chunk) -> None:
-        if chunk.extra and isinstance(chunk.extra, CentralDirectoryFileHeader):
+        if chunk.extra and isinstance(chunk.extra, LocalFileHeader):
             new_block_position = start.to_bytes(4, byteorder='little')
-            pos = chunk.extra.pos
+            pos = chunk.extra.cdfh_pos
             dchunk = self.directory_chunk
             dchunk.data[pos + 42:pos + 46] = new_block_position
 
         if chunk.extra and isinstance(chunk.extra, EndOfCentralDirectoryRecord):
             new_block_position = start.to_bytes(4, byteorder='little')
+            pos = chunk.extra.pos
             dchunk = self.directory_chunk
-            dchunk.data[-6:-2] = new_block_position
+            dchunk.data[pos + 16:pos + 20] = new_block_position
 
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
@@ -102,11 +128,11 @@ class ZIPHandler(FileHandler):
         eocd = self._parse_eocd()
         file_list = self._get_files(eocd)
 
-        first=self.first_header
+        first = self.first_header
 
         chunks = [];
         for file in file_list:
-            offset = file.offset
+            offset = file.pos
             size = file.size()
 
             if first:
@@ -127,7 +153,7 @@ class ZIPHandler(FileHandler):
                     extra=file,
                 ))
 
-        footer_size=(filesize - eocd.offset)
+        footer_size = (filesize - eocd.offset)
 
         self.directory_chunk = FixedChunk(
                 position=-footer_size,
@@ -142,31 +168,42 @@ class ZIPHandler(FileHandler):
 
     def _parse_eocd(self) -> EndOfCentralDirectoryRecord:
         with open(self.filepath, 'rb') as f:
-            f.seek(-22, 2)
-            data = f.read(22)
+            filesize = f.seek(0, 2)
 
-            if not EndOfCentralDirectoryRecord.match(data):
+            footer_size = min(65536 + 22, filesize)
+            f.seek(-footer_size, 2)
+            data = f.read(footer_size)
+
+            for pos in range(0, footer_size):
+                if EndOfCentralDirectoryRecord.match(data[pos:pos + 22]):
+                    footer_pos = pos
+                    break
+            else:
                 raise ValueError("EOCD signature not found")
 
-            return EndOfCentralDirectoryRecord(data)
+            return EndOfCentralDirectoryRecord(footer_pos, data[footer_pos:footer_pos + 22])
 
-    def _get_files(self, eocd: EndOfCentralDirectoryRecord) -> List[CentralDirectoryFileHeader]:
+    def _get_files(self, eocd: EndOfCentralDirectoryRecord) -> List[LocalFileHeader]:
         with open(self.filepath, 'rb') as f:
-            f.seek(eocd.offset)
+            offset = eocd.offset
 
             files = []
             for _ in range(eocd.total_entries):
-                pos = f.seek(0, 1)
-                header = f.read(46)
+                f.seek(offset, 0)
+                cdfh_data = f.read(46)
 
-                if not CentralDirectoryFileHeader.match(header):
+                if not CentralDirectoryFileHeader.match(cdfh_data):
                     raise ValueError("CDFH signature not found")
 
-                cdfh = CentralDirectoryFileHeader(pos, header)
+                cdfh = CentralDirectoryFileHeader(offset, cdfh_data)
 
-                filename = f.read(cdfh.filename_length).decode('utf-8')
-                f.seek(cdfh.extra_length + cdfh.comment_length, 1)
+                f.seek(cdfh.offset, 0)
+                lfh_data = f.read(30)
 
-                files.append(cdfh)
+                lfh = LocalFileHeader(offset, cdfh.offset, lfh_data)
+
+                files.append(lfh)
+
+                offset += cdfh.size()
 
             return files
