@@ -1,3 +1,4 @@
+from memory_profiler import profile
 from collections.abc import Sequence
 
 class VirtualString(Sequence):
@@ -7,12 +8,14 @@ class VirtualString(Sequence):
     def __len__(self) -> int:
         return 100
 
+    @profile
     def __setitem__(self, key, value):
         if isinstance(key, slice):
             self.data[(key.start, key.stop)] = value
         else:
             raise TypeError("Indexing must be done with slices")
 
+    @profile
     def __getitem__(self, key):
         if not isinstance(key, slice):
             raise TypeError("Indexing must be done with slices")
@@ -44,10 +47,18 @@ class VirtualString(Sequence):
 
         return b''.join(result)
 
+    @profile
+    def __bytes__(self):
+        return bytes(self[0:])
+
 # Beispiel
 vstr = VirtualString()
 vstr[100:110] = b'HelloWorld'
 vstr[115:120] = b'Python'
 
-print(vstr[-10:300])
+#print(vstr[0::2])
+#print(vstr[-10:300])
 print(vstr[95:125])
+
+#with open('/tmp/out', 'wb') as file:
+#    file.write(bytes(vstr))

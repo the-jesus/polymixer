@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
 from typing import Union, List
 
-class Chunk(object):
+class Chunk(ABC):
     def __init__(self, name: str = None, size: int = 0, offset: int = 0, data: bytes = None, extra = None):
         self.name = name
         self.size = size

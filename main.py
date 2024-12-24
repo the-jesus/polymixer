@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Type
 from file_handler import FileHandler
 from hook_manager import HookManager
 from module_registry import ModuleRegistry
+from chunk_manager import ChunkManager
 
 import sys
 import argparse
@@ -68,63 +69,51 @@ def main():
 
     tree = it.IntervalTree()
 
+    chunk_manager = ChunkManager()
+
     for chunk in fixed_chunks:
         start = chunk.position
-        end = chunk.position + chunk.size
+        chunk_manager.place(start, chunk)
 
-        if tree.overlaps(start, end):
-            raise Exception(f"Found overlapping chunk at position {(start, end)}")
-
-        tree.addi(start, end, chunk)
         if start >= 0:
-            hook_manager.trigger('placing:chunk', start, end, chunk)
+            hook_manager.trigger(
+                'placing:chunk',
+                start,
+                start + chunk.size,
+                chunk,
+            )
 
     for chunk in flexible_chunks:
-        size = chunk.size
-        first_position = chunk.position[0] or 0
-        last_position = chunk.position[1] or tree.end()
+        start = chunk_manager.find_position(chunk)
+        chunk_manager.place(start, chunk)
 
-        intervals = tree.overlap(first_position, last_position)
+        if start >= 0:
+            hook_manager.trigger(
+                'placing:chunk',
+                start,
+                start + chunk.size,
+                chunk,
+            )
 
-        positions = set([ first_position ])
-        positions.update([
-            i.end for i in intervals if i.end <= last_position
-        ])
+    chunks = chunk_manager.get_tail()
+    for (start, chunk) in chunks:
+        chunk_manager.place(start, chunk)
 
-        for position in sorted(positions):
-            start = position
-            end = position + size
-            if not tree.overlaps(start, end):
-                tree.addi(start, end, chunk)
-                if start >= 0:
-                    hook_manager.trigger('placing:chunk', start, end, chunk)
-                break
-        else:
-            raise Exception("No free space for chunk")
+        hook_manager.trigger(
+            'placing:chunk',
+            start,
+            start + chunk.size,
+            chunk,
+        )
 
-    new_file_size = tree.end() - min(0, tree.begin())
-    tree.slice(0)
-    end_interval = tree.overlap(tree.begin(), 0)
-    tree.remove_overlap(tree.begin(), 0)
+    hook_manager.trigger('placing:complete', chunk_manager)
 
-    for interval in end_interval:
-        start = interval.begin + new_file_size
-        end = interval.end + new_file_size
-        chunk = interval.data
-        tree.addi(start, end, chunk)
-        hook_manager.trigger('placing:chunk', start, end, chunk)
-
-    hook_manager.trigger('placing:complete', tree)
-
-    with open(args.output, 'wb') as f:
-        f.truncate()
-        for interval in tree:
-            chunk = interval.data
-            offset = chunk.offset
-            size = chunk.size
-            data = chunk.data[offset:offset + size]
-            f.seek(interval.begin)
-            f.write(data)
+    with open(args.output, 'wb') as file:
+        file.truncate()
+        blocks = chunk_manager.get_data_blocks()
+        for (position, block) in blocks:
+            file.seek(position)
+            file.write(block)
 
 if __name__ == "__main__":
     main()
