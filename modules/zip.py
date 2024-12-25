@@ -10,6 +10,7 @@ class LocalFileHeader:
     def __init__(self, cdfh_pos: int, pos: int, data: bytes):
         self.pos = pos
         self.cdfh_pos = cdfh_pos
+        self.dd_size = 0
         (
             self.signature,
             self.version,
@@ -32,7 +33,22 @@ class LocalFileHeader:
         return 30 \
              + self.filename_length \
              + self.extra_length \
-             + self.compressed_size
+             + self.compressed_size \
+             + self.dd_size
+
+    def add_data_descriptor(self, data_descriptor: bytes) -> None:
+        self.dd_size = 12;
+        o = 0
+
+        if data_descriptor[0:4] == b'\x50\x4b\x07\x08':
+            o = 4
+            self.dd_size += 4;
+
+        (
+            self.crc,
+            self.compressed_size,
+            self.uncompressed_size,
+        ) = struct.unpack('<III', data_descriptor[o:o+12])
 
     def __repr__(self) -> str:
         return f"<LFH({self.signature}, {self.uncompressed_size})>"
@@ -201,6 +217,11 @@ class ZIPHandler(FileHandler):
                 lfh_data = f.read(30)
 
                 lfh = LocalFileHeader(offset, cdfh.offset, lfh_data)
+
+                if lfh.flags & 8 > 0:
+                    f.seek(cdfh.offset + 30 + lfh.filename_length + lfh.extra_length + cdfh.compressed_size, 0)
+                    dd_data = f.read(16)
+                    lfh.add_data_descriptor(dd_data)
 
                 files.append(lfh)
 
