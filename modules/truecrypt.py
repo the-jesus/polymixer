@@ -1,4 +1,3 @@
-#from memory_profiler import profile
 from typing import List
 from file_handler import FileHandler
 from chunk import Chunk, FixedChunk, FlexibleChunk
@@ -21,12 +20,14 @@ class TruecryptHandler(FileHandler):
         truecrypt_group.add_argument("--truecrypt-new-salt", action='store_true', help="Enables re-encryption of the key using the specified salt.")
 
     def chunks_placed(self, chunk_manager: ChunkManager) -> None:
-        new_salt = chunk_manager.get_data(0, 64)
+        new_salt = chunk_manager[0:64]
         old_salt = self.old_salt
+
+        print('old salt', len(old_salt), old_salt)
+        print('new salt', len(new_salt), new_salt)
 
         # TODO: Reencrypt the key here with the new salt
 
-    #@profile
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
             data = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_COPY)

@@ -1,8 +1,9 @@
 from typing import Generator, Tuple
 from intervaltree import IntervalTree
 from chunk import Chunk, FixedChunk, FlexibleChunk
+from collections.abc import Sequence
 
-class ChunkManager(object):
+class ChunkManager(Sequence):
     def __init__(self):
         self.tree = IntervalTree()
 
@@ -51,26 +52,38 @@ class ChunkManager(object):
             size = chunk.size
             yield (interval.begin, memoryview(chunk.data[offset:offset + size]))
 
-    def get_data(self, start: int, end: int) -> bytes:
+    def __getitem__(self, key: slice) -> bytes:
+        if isinstance(key, int):
+            start = key
+            end = key + 1
+        elif isinstance(key, slice):
+            start = key.start if key.start != None else self.tree.begin()
+            end = key.stop if key.stop != None else self.tree.end()
+        else:
+            raise Exception(f'Unsupported index: {key}')
+
         blocks = []
 
         for interval in sorted(self.tree.overlap(start, end)):
             chunk = interval.data
 
-            if interval.begin <= start:
-                s = start - interval.begin + chunk.offset
-                e = min(end, interval.end) + chunk.offset
-                blocks.append(chunk.data[s:e])
-            elif interval.begin > start:
+            if interval.begin > start:
+                # Add padding in front of the interval
                 blocks.append(b'\x00' * (interval.begin - start))
                 start = interval.begin
-                s = start + chunk.offset
-                e = min(end, interval.end) + chunk.offset
-                blocks.append(chunk.data[s:e])
 
-            start = interval.end
+            o = chunk.offset - interval.begin
+            s = start
+            e = min(end, interval.end)
+            blocks.append(chunk.data[s + o:e + o])
+
+            start = e
 
         if start < end:
+            # If necessary, fill up the end
             blocks.append(b'\x00' * (end - start))
 
         return b''.join(blocks)
+
+    def __len__(self) -> int:
+        return self.tree.span()
