@@ -1,4 +1,4 @@
-from typing import Generator, Tuple
+from typing import Generator, Tuple, List
 from intervaltree import IntervalTree
 from chunk import Chunk, FixedChunk, FlexibleChunk
 from collections.abc import Sequence
@@ -33,7 +33,7 @@ class ChunkManager(Sequence):
         else:
             raise Exception("No free space for chunk")
 
-    def get_tail(self) -> Generator[Tuple[int, Chunk], None, None]:
+    def get_end_chunks(self) -> Generator[Tuple[int, Chunk], None, None]:
         new_file_size = self.tree.end() - min(0, self.tree.begin())
         self.tree.slice(0)
         end_interval = self.tree.overlap(self.tree.begin(), 0)
@@ -44,6 +44,12 @@ class ChunkManager(Sequence):
             chunk = interval.data
 
             yield (start, chunk)
+
+    def get_fixed_chunks(cls, chunks: Chunk) -> List[FixedChunk]:
+        return [ c for c in chunks if isinstance(c, FixedChunk) ]
+
+    def get_flexible_chunks(cls, chunks: Chunk) -> List[FlexibleChunk]:
+        return [ c for c in chunks if isinstance(c, FlexibleChunk) ]
 
     def get_data_blocks(self) -> Generator[Tuple[int, bytes], None, None]:
         for interval in self.tree:

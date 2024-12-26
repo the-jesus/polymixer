@@ -1,15 +1,16 @@
+#!/usr/bin/env python
 #from memory_profiler import profile
 
+import sys
+import argparse
+
 from typing import Callable, Dict, List, Type
+
 from file_handler import FileHandler
 from hook_manager import HookManager
 from module_registry import ModuleRegistry
 from chunk_manager import ChunkManager
-
-import sys
-import argparse
-import intervaltree as it
-from chunk import FixedChunk, FlexibleChunk
+from chunk import Chunk, FixedChunk, FlexibleChunk
 
 from modules.pdf import PDFHandler
 from modules.zip import ZIPHandler
@@ -19,19 +20,7 @@ from modules.truecrypt import TruecryptHandler
 from modules.ext2 import Ext2Handler
 from modules.png2 import PNGHandler
 
-registry = ModuleRegistry()
-registry.register('pdf', PDFHandler())
-registry.register('zip', ZIPHandler())
-registry.register('random', RandomHandler())
-registry.register('shell', ShellHandler())
-registry.register('truecrypt', TruecryptHandler())
-registry.register('ext2', Ext2Handler())
-registry.register('png', PNGHandler())
-
-#@profile
-def main():
-    hook_manager = HookManager()
-
+def parse_args(registry: ModuleRegistry, hook_manager: HookManager):
     parser = argparse.ArgumentParser(
         description="A modular program with module-specific help.",
         add_help=False,
@@ -44,8 +33,12 @@ def main():
 
     args, unknown_args = parser.parse_known_args()
 
-    for module_name in args.modules:
-        module = registry.get(module_name)
+    active_modules = [
+        registry.get(module_name)
+        for module_name in args.modules
+    ]
+
+    for module in active_modules:
         module.param(parser)
 
     if args.help:
@@ -54,51 +47,20 @@ def main():
 
     args, unknown_args = parser.parse_known_args()
 
-    for module_name in args.modules:
-        module = registry.get(module_name)
+    for module in active_modules:
         module.setup(args, hook_manager)
 
-    chunks = []
+    return active_modules, args.output
 
-    for module_name in args.modules:
-        module = registry.get(module_name)
-        chunks += module.get_chunks()
+def place_chunk(
+    chunk_manager: ChunkManager,
+    hook_manager: HookManager,
+    start: int,
+    chunk: Chunk,
+) -> None:
+    chunk_manager.place(start, chunk)
 
-    fixed_chunks = [ c for c in chunks if isinstance(c, FixedChunk) ]
-    flexible_chunks = [ c for c in chunks if isinstance(c, FlexibleChunk) ]
-
-    tree = it.IntervalTree()
-
-    chunk_manager = ChunkManager()
-
-    for chunk in fixed_chunks:
-        start = chunk.position
-        chunk_manager.place(start, chunk)
-
-        if start >= 0:
-            hook_manager.trigger(
-                'placing:chunk',
-                start,
-                start + chunk.size,
-                chunk,
-            )
-
-    for chunk in flexible_chunks:
-        start = chunk_manager.find_position(chunk)
-        chunk_manager.place(start, chunk)
-
-        if start >= 0:
-            hook_manager.trigger(
-                'placing:chunk',
-                start,
-                start + chunk.size,
-                chunk,
-            )
-
-    chunks = chunk_manager.get_tail()
-    for (start, chunk) in chunks:
-        chunk_manager.place(start, chunk)
-
+    if start >= 0:
         hook_manager.trigger(
             'placing:chunk',
             start,
@@ -106,9 +68,43 @@ def main():
             chunk,
         )
 
+def main() -> int:
+    registry = ModuleRegistry()
+    registry.register('pdf', PDFHandler())
+    registry.register('zip', ZIPHandler())
+    registry.register('random', RandomHandler())
+    registry.register('shell', ShellHandler())
+    registry.register('truecrypt', TruecryptHandler())
+    registry.register('ext2', Ext2Handler())
+    registry.register('png', PNGHandler())
+
+    hook_manager = HookManager()
+
+    modules, output = parse_args(registry, hook_manager)
+
+    chunks = []
+    for module in modules:
+        chunks += module.get_chunks()
+
+    chunk_manager = ChunkManager()
+
+    fixed_chunks = chunk_manager.get_fixed_chunks(chunks)
+    for chunk in fixed_chunks:
+        start = chunk.position
+        place_chunk(chunk_manager, hook_manager, start, chunk)
+
+    flexible_chunks = chunk_manager.get_flexible_chunks(chunks)
+    for chunk in flexible_chunks:
+        start = chunk_manager.find_position(chunk)
+        place_chunk(chunk_manager, hook_manager, start, chunk)
+
+    end_chunks = chunk_manager.get_end_chunks()
+    for (start, chunk) in end_chunks:
+        place_chunk(chunk_manager, hook_manager, start, chunk)
+
     hook_manager.trigger('placing:complete', chunk_manager)
 
-    with open(args.output, 'wb') as file:
+    with open(output, 'wb') as file:
         file.truncate()
         blocks = chunk_manager.get_data_blocks()
         for (position, block) in blocks:
