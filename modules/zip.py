@@ -51,7 +51,7 @@ class LocalFileHeader:
         ) = struct.unpack('<III', data_descriptor[o:o+12])
 
     def __repr__(self) -> str:
-        return f"<LFH({self.signature}, {self.uncompressed_size})>"
+        return f"<LFH signature={self.signature:08x} uncompressed_size={self.uncompressed_size}>"
 
 class EndOfCentralDirectoryRecord:
     def __init__(self, pos: int, data: bytes):
@@ -72,7 +72,7 @@ class EndOfCentralDirectoryRecord:
         return data[:4] == b'\x50\x4b\x05\x06'
 
     def __repr__(self) -> str:
-        return f"<EOCD({self.signature}, {self.offset})>"
+        return f"<EOCD signature={self.signature:08x} offset={self.offset} size={self.size}>"
 
 class CentralDirectoryFileHeader:
     def __init__(self, pos: int, data: bytes):
@@ -108,7 +108,7 @@ class CentralDirectoryFileHeader:
              + self.comment_length
 
     def __repr__(self) -> str:
-        return f"<CDFH({self.signature}, {self.offset})>"
+        return f"<CDFH signature={self.signature:08x} offset={self.offset}>"
 
 class ZIPHandler(FileHandler):
     def setup(self, args, hook_manager: HookManager) -> None:
@@ -190,7 +190,7 @@ class ZIPHandler(FileHandler):
             f.seek(-footer_size, 2)
             data = f.read(footer_size)
 
-            for pos in range(0, footer_size):
+            for pos in range(footer_size - 22, 0, -1):
                 if EndOfCentralDirectoryRecord.match(data[pos:pos + 22]):
                     footer_pos = pos
                     break
