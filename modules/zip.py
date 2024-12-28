@@ -11,6 +11,7 @@ class LocalFileHeader:
         self.pos = pos
         self.cdfh_pos = cdfh_pos
         self.dd_size = 0
+
         (
             self.signature,
             self.version,
@@ -132,8 +133,7 @@ class ZIPHandler(FileHandler):
         if chunk.extra and isinstance(chunk.extra, EndOfCentralDirectoryRecord):
             new_block_position = start.to_bytes(4, byteorder='little')
             pos = chunk.extra.pos
-            dchunk = self.directory_chunk
-            dchunk.data[pos + 16:pos + 20] = new_block_position
+            chunk.data[pos + 16:pos + 20] = new_block_position
 
     def get_chunks(self) -> List[Chunk]:
         with open(self.filepath, 'rb') as f:
@@ -188,6 +188,7 @@ class ZIPHandler(FileHandler):
 
             footer_size = min(65536 + 22, filesize)
             f.seek(-footer_size, 2)
+            file_position = f.seek(0, 1)
             data = f.read(footer_size)
 
             for pos in range(footer_size - 22, 0, -1):
@@ -197,7 +198,10 @@ class ZIPHandler(FileHandler):
             else:
                 raise ValueError("EOCD signature not found")
 
-            return EndOfCentralDirectoryRecord(footer_pos, data[footer_pos:footer_pos + 22])
+            return EndOfCentralDirectoryRecord(
+                footer_pos + file_position,
+                data[footer_pos:footer_pos + 22],
+            )
 
     def _get_files(self, eocd: EndOfCentralDirectoryRecord) -> List[LocalFileHeader]:
         with open(self.filepath, 'rb') as f:
