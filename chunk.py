@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, List
+from typing import List
 
 class Chunk(ABC):
     def __init__(self, name: str = None, size: int = 0, offset: int = 0, data: bytes = None, extra = None):
@@ -17,7 +17,7 @@ class Chunk(ABC):
         return f"<Chunk({name_str}, {size_str}, {offset_str}, {data_str})>"
 
 class FixedChunk(Chunk):
-    def __init__(self, name: str = None, size: int = 0, offset: int = 0, data: bytes = None, position: Union[int, range, List[int]] = None, extra = None):
+    def __init__(self, name: str = None, size: int = 0, offset: int = 0, data: bytes = None, position: int = None, extra = None):
         super().__init__(name, size, offset, data, extra)
 
         self.position = position
@@ -31,7 +31,7 @@ class FixedChunk(Chunk):
         return f"<FixedChunk({name_str}, {size_str}, {offset_str}, {data_str}, {position_str})>"
 
 class FlexibleChunk(Chunk):
-    def __init__(self, name: str = None, size: int = 0, offset: int = 0, data: bytes = None, position: Union[int, range, List[int]] = None, extra = None):
+    def __init__(self, name: str = None, size: int = 0, offset: int = 0, data: bytes = None, position: List[int] = None, extra = None):
         super().__init__(name, size, offset, data, extra)
 
         self.position = position

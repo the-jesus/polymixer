@@ -119,9 +119,9 @@ class ZIPHandler(FileHandler):
         hook_manager.register('placing:chunk', self.place_chunk)
 
     def param(self, parser: ArgumentParser) -> None:
-        pdf_group = parser.add_argument_group("ZIP Options")
-        pdf_group.add_argument("--zip-file", nargs=None, help="Specify a file and its arguments.", required=True)
-        pdf_group.add_argument("--zip-first-header", action='store_true', help="If set the zip content starts at position zero.")
+        zip_group = parser.add_argument_group("ZIP Options")
+        zip_group.add_argument("--zip-file", nargs=None, help="Specify a file and its arguments.", required=True)
+        zip_group.add_argument("--zip-first-header", action='store_true', help="If set the zip content starts at position zero.")
 
     def place_chunk(self, start: int, end: int, chunk: Chunk) -> None:
         if chunk.extra and isinstance(chunk.extra, LocalFileHeader):

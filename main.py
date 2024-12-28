@@ -1,16 +1,12 @@
 #!/usr/bin/env python
-#from memory_profiler import profile
 
 import sys
 import argparse
 
-from typing import Callable, Dict, List, Type
-
-from file_handler import FileHandler
 from hook_manager import HookManager
 from module_registry import ModuleRegistry
 from chunk_manager import ChunkManager
-from chunk import Chunk, FixedChunk, FlexibleChunk
+from chunk import Chunk
 
 from modules.pdf import PDFHandler
 from modules.zip import ZIPHandler
