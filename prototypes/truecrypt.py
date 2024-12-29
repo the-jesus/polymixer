@@ -1,10 +1,8 @@
 import sys
+import os
 from hashlib import pbkdf2_hmac
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import struct
-import binascii
-import crcmod
 
 def hexdump(data, length=16):
     result = []
@@ -12,60 +10,55 @@ def hexdump(data, length=16):
         chunk = data[i:i+length]
         hex_part = ' '.join(f'{byte:02x}' for byte in chunk)
         ascii_part = ''.join((chr(byte) if 32 <= byte <= 126 else '.') for byte in chunk)
-        result.append(f'{(i + 64):08x}  {hex_part:<{length*3}}  {ascii_part}')
-
+        result.append(f'{i:08x}  {hex_part:<{length*3}}  {ascii_part}')
     return '\n'.join(result)
+
+def get_cipher(password, salt):
+    key = pbkdf2_hmac('ripemd160', password.encode(), salt, 2000, 64)
+    iv = b'\x00' * 16
+    return Cipher(algorithms.AES(key), modes.XTS(iv), backend=default_backend())
 
 def decrypt_truecrypt_header(file_path, password):
     with open(file_path, "rb") as f:
         data = f.read(512)
-        salt = data[0:64]
-        encrypted_header = data[64:]
 
-    key = pbkdf2_hmac('ripemd160', password.encode(), salt, 2000, 64)
+    old_salt = data[0:64]
+    encrypted_header = data[64:]
 
-    aes_key1 = key[:32]
-    aes_key2 = key[32:]
+    xts_cipher = get_cipher(password, old_salt)
+    cipher = xts_cipher.decryptor()
+    decrypted_header = cipher.update(encrypted_header) + cipher.finalize()
 
-    tweak = b'\x00' * 16
+    return decrypted_header, old_salt
 
-    xts_cipher = Cipher(algorithms.AES(aes_key1 + aes_key2), modes.XTS(tweak), backend=default_backend())
-    decryptor = xts_cipher.decryptor()
+def encrypt_truecrypt_header(header, password, new_salt):
+    xts_cipher = get_cipher(password, new_salt)
+    cipher = xts_cipher.encryptor()
+    encrypted_header = cipher.update(header) + cipher.finalize()
 
-    decrypted_header = decryptor.update(encrypted_header) + decryptor.finalize()
+    return encrypted_header
 
-    return decrypted_header
-
-def is_valid_truecrypt_header(decrypted_header):
-    return decrypted_header[:4] == b'TRUE'
+def write_new_header(file_path, new_salt, new_encrypted_header):
+    with open(file_path, "r+b") as f:
+        f.seek(0)  # Rewind to the start of the file
+        f.write(new_salt + new_encrypted_header)
 
 truecrypt_file = sys.argv[1]
 password = "test"
 
-decrypted_header = decrypt_truecrypt_header(truecrypt_file, password)
+# Decrypt the existing header
+decrypted_header, old_salt = decrypt_truecrypt_header(truecrypt_file, password)
 
-print("Header:")
 print(hexdump(decrypted_header))
-#print(hex(binascii.crc32(decrypted_header[192:447])))
-print()
 
-#polynom = 0x04C11DB7
-#polynom = 0xEDB88320
-#crc_truecrypt = crcmod.mkCrcFun(poly=polynom, initCrc=0xFFFFFFFF, xorOut=0xFFFFFFFF, rev=True)
-#crc_truecrypt = crcmod.mkCrcFun(poly=polynom, initCrc=0xFFFFFFFF, xorOut=0xFFFFFFFF, rev=False)
+# Generate a new salt
+#new_salt = os.urandom(64)
 
-print(hexdump(decrypted_header[0:188]))
-print()
-print(hexdump(decrypted_header[192:]))
-print()
-print(hexdump(decrypted_header[0:188]))
-print()
-print(hex(binascii.crc32(decrypted_header[192:])))
-print(hex(binascii.crc32(decrypted_header[0:188])))
-#print(hex(crc_truecrypt(decrypted_header[256:512])))
+# Encrypt the header with the new salt
+#new_encrypted_header = encrypt_truecrypt_header(decrypted_header, password, new_salt)
 
-#if is_valid_truecrypt_header(decrypted_header):
-#    print("Header:")
-#    print(hexdump(decrypted_header))
-#else:
-#    print("Signature not found.")
+# Write the new salt and new encrypted header back to the file
+#write_new_header(truecrypt_file, new_salt, new_encrypted_header)
+
+#print("New header written with the following salt:")
+#print(hexdump(new_salt))
