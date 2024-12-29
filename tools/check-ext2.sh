@@ -1,6 +1,6 @@
 #!/bin/bash
 
-fsck.ext2 -f output.zip
+fsck.ext2 -n -f output.zip
 
 echo
 

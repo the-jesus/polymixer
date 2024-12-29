@@ -6,7 +6,7 @@ from hook_manager import HookManager
 
 class PDFHandler(FileHandler):
     def setup(self, args, hook_manager: HookManager) -> None:
-        pass
+        raise Exception("Not implemented yet")
 
     def param(self, parser: ArgumentParser) -> None:
         pdf_group = parser.add_argument_group("PDF Options")

@@ -1,31 +1,6 @@
-#!/bin/sh
-tail -c+150 $0|sh
-exit
+#!/bin/bash
 
-HEÒuã©UQ Õ·êwiå´—½K’QÛ(aÆíæ¯#
-½‹•}óµaîs$6R>8Ñ.ÈcçÐ”ó¯!¼,xPÿT$H!/ŸüÆiUçKÀõ4÷÷3®>ûå´h`ýÝ
+bash tools/check-zip.sh
+bash tools/check-ext2.sh
+bash tools/check-truecrypt.sh
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-echo "Here I am!"
-echo "Yay, it works!"
