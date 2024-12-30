@@ -108,4 +108,7 @@ def main() -> int:
             file.write(block)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as error:
+        print(f'Error: {error}')

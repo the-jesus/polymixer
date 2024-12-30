@@ -153,6 +153,7 @@ class ZIPHandler(FileHandler):
 
             if first:
                 chunks.append(FixedChunk(
+                    module=self,
                     position=offset,
                     size=size,
                     offset=offset,
@@ -162,6 +163,7 @@ class ZIPHandler(FileHandler):
                 first=False
             else:
                 chunks.append(FlexibleChunk(
+                    module=self,
                     position=(offset, None),
                     size=size,
                     offset=offset,
@@ -172,6 +174,7 @@ class ZIPHandler(FileHandler):
         footer_size = (filesize - eocd.offset)
 
         self.directory_chunk = FixedChunk(
+                module=self,
                 position=-footer_size,
                 size=footer_size,
                 offset=eocd.offset,

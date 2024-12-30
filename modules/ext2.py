@@ -41,6 +41,7 @@ class Ext2Handler(FileHandler):
             used_space = self._get_used_space(badblocks, 1024, filesize)
             for start, size in used_space:
                 chunks.append(FixedChunk(
+                    module=self,
                     position=start,
                     offset=start,
                     size=size,

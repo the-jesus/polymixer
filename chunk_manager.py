@@ -11,7 +11,8 @@ class ChunkManager(Sequence):
         end = start + chunk.size
 
         if self.tree.overlaps(start, end):
-            raise Exception(f"Found overlapping chunk at position {(start, end)}")
+            placed_chunk = self.tree.overlap(start, end)
+            raise Exception(f"Found overlapping chunk at position {(start, end)} {placed_chunk} vs {chunk}")
 
         self.tree.addi(start, end, chunk)
 
