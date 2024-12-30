@@ -13,6 +13,7 @@ from modules.zip import ZIPHandler
 from modules.random import RandomHandler
 from modules.shell import ShellHandler
 from modules.truecrypt import TruecryptHandler
+from modules.veracrypt import VeracryptHandler
 from modules.ext2 import Ext2Handler
 from modules.png2 import PNGHandler
 
@@ -71,6 +72,7 @@ def main() -> int:
     registry.register('random', RandomHandler())
     registry.register('shell', ShellHandler())
     registry.register('truecrypt', TruecryptHandler())
+    registry.register('veracrypt', VeracryptHandler())
     registry.register('ext2', Ext2Handler())
     registry.register('png', PNGHandler())
 
@@ -106,6 +108,8 @@ def main() -> int:
         for (position, block) in blocks:
             file.seek(position)
             file.write(block)
+
+    hook_manager.trigger('writing:finish', output)
 
 if __name__ == "__main__":
     try:
