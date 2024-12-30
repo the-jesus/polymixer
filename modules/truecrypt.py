@@ -48,7 +48,7 @@ class TruecryptHandler(FileHandler):
             self.old_salt,
         )
 
-        if clear_header[0:4] != b'TRUE':
+        if clear_header == None:
             raise Exception("Could not find TrueCrypt header")
 
         new_header = self.encrypt_truecrypt_header(
@@ -81,20 +81,24 @@ class TruecryptHandler(FileHandler):
 
         return chunks
 
-    def _get_cipher(self, password, salt):
-        key = pbkdf2_hmac('ripemd160', password, salt, 2000, 64)
+    def _get_cipher(self, password, salt, hash_algorithm):
+        key = pbkdf2_hmac(hash_algorithm, password, salt, 2000, 64)
         iv = b'\x00' * 16
         return Cipher(algorithms.AES(key), modes.XTS(iv), backend=default_backend())
 
     def decrypt_truecrypt_header(self, header, password, salt):
-        xts_cipher = self._get_cipher(password, salt)
-        cipher = xts_cipher.decryptor()
-        decrypted_header = cipher.update(header) + cipher.finalize()
+        for hash_algorithm in ['ripemd160', 'sha512']:
+            xts_cipher = self._get_cipher(password, salt, hash_algorithm)
+            cipher = xts_cipher.decryptor()
+            decrypted_header = cipher.update(header) + cipher.finalize()
 
-        return decrypted_header
+            if decrypted_header[0:4] == b'TRUE':
+                return decrypted_header
+
+        return None
 
     def encrypt_truecrypt_header(self, header, password, new_salt):
-        xts_cipher = self._get_cipher(password, new_salt)
+        xts_cipher = self._get_cipher(password, new_salt, 'ripemd160')
         cipher = xts_cipher.encryptor()
         encrypted_header = cipher.update(header) + cipher.finalize()
 
