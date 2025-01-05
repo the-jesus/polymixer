@@ -87,7 +87,7 @@ class TruecryptHandler(FileHandler):
         return Cipher(algorithms.AES(key), modes.XTS(iv), backend=default_backend())
 
     def decrypt_truecrypt_header(self, header, password, salt):
-        for hash_algorithm in ['ripemd160', 'sha512']:
+        for hash_algorithm in hashlib.algorithms_available:
             xts_cipher = self._get_cipher(password, salt, hash_algorithm)
             cipher = xts_cipher.decryptor()
             decrypted_header = cipher.update(header) + cipher.finalize()
@@ -98,7 +98,7 @@ class TruecryptHandler(FileHandler):
         return None
 
     def encrypt_truecrypt_header(self, header, password, new_salt):
-        xts_cipher = self._get_cipher(password, new_salt, 'ripemd160')
+        xts_cipher = self._get_cipher(password, new_salt, 'sha512')
         cipher = xts_cipher.encryptor()
         encrypted_header = cipher.update(header) + cipher.finalize()
 
