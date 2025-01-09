@@ -24,8 +24,9 @@ def parse_args(registry: ModuleRegistry, hook_manager: HookManager):
     )
 
     global_group = parser.add_argument_group("Global Options")
-    global_group.add_argument("-m", "--modules", nargs="+", help="Specify a module and its arguments.", required=True)
-    global_group.add_argument("-o", "--output", nargs=None, help="Specify the output file.", required=True)
+    global_group.add_argument("-m", "--modules", nargs="+", default=[], help="Specify a module and its arguments.")
+    global_group.add_argument("-o", "--output", nargs=None, help="Specify the output file.")
+    global_group.add_argument("-l", "--list-modules", action="store_true", help="List all registered modules.")
     global_group.add_argument("-h", "--help", action="store_true", help="Show this help message and exit.")
 
     args, unknown_args = parser.parse_known_args()
@@ -41,6 +42,15 @@ def parse_args(registry: ModuleRegistry, hook_manager: HookManager):
     if args.help:
         parser.print_help()
         sys.exit()
+
+    if args.list_modules:
+        print(registry.get_modules())
+        sys.exit()
+
+    if not args.output:
+        parser.print_help()
+
+        raise Exception(f'Output file is required.')
 
     args, unknown_args = parser.parse_known_args()
 
