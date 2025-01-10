@@ -36,12 +36,5 @@ python main.py --output output.zip --modules zip truecrypt random --zip-file=sam
 ## Modules
 Modules are located under the `modules/` directory and can be specified in the command line. Each module handles a specific type of file and can be independently configured.
 
-## Tools
-Two utility tools are included for debugging and validation:
-- `check-zip.sh`: Displays debugging information about ZIP files.
-- `zip-parser.py`: Tests if the ZIP file has been generated with errors.
-
-These tools are located in the `tools/` directory.
-
 ## Samples
 Sample files that can be used with the Polyglot File Generator are located under the `samples/` directory. These include various formats that demonstrate the capabilities of the tool.

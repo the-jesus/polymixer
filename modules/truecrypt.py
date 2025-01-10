@@ -98,7 +98,7 @@ class TruecryptHandler(FileHandler):
         return None
 
     def encrypt_truecrypt_header(self, header, password, new_salt):
-        xts_cipher = self._get_cipher(password, new_salt, 'sha512')
+        xts_cipher = self._get_cipher(password, new_salt, 'ripemd160')
         cipher = xts_cipher.encryptor()
         encrypted_header = cipher.update(header) + cipher.finalize()
 
