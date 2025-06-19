@@ -25,6 +25,7 @@ class TruecryptHandler(FileHandler):
         self.header_chunk = None
         self.filepath = args.truecrypt_file
         self.reencrypt_key = args.truecrypt_new_salt
+        self.vera = args.truecrypt_vera
 
         if self.reencrypt_key and not args.truecrypt_password:
             raise Exception("Password is required to re-encrypt the keys with a new salt")
@@ -38,6 +39,7 @@ class TruecryptHandler(FileHandler):
         truecrypt_group.add_argument("--truecrypt-file", nargs=None, help="Specify the source TrueCrypt container.", required=True)
         truecrypt_group.add_argument("--truecrypt-new-salt", action='store_true', help="Enables re-encryption of the key using the specified salt.")
         truecrypt_group.add_argument("--truecrypt-password", nargs=None, help="The password of the TrueCrypt container.")
+        truecrypt_group.add_argument("--truecrypt-vera", action='store_true', help="Support verascript images")
 
     def chunks_placed(self, chunk_manager: ChunkManager) -> None:
         new_salt = chunk_manager[0:64]
@@ -82,7 +84,10 @@ class TruecryptHandler(FileHandler):
         return chunks
 
     def _get_cipher(self, password, salt, hash_algorithm):
-        key = pbkdf2_hmac(hash_algorithm, password, salt, 2000, 64)
+        if self.vera:
+            key = pbkdf2_hmac(hash_algorithm, password, salt, 500000, 64)
+        else:
+            key = pbkdf2_hmac(hash_algorithm, password, salt, 2000, 64)
         iv = b'\x00' * 16
         return Cipher(algorithms.AES(key), modes.XTS(iv), backend=default_backend())
 
@@ -92,13 +97,13 @@ class TruecryptHandler(FileHandler):
             cipher = xts_cipher.decryptor()
             decrypted_header = cipher.update(header) + cipher.finalize()
 
-            if decrypted_header[0:4] == b'TRUE':
+            if decrypted_header[0:4] in [ b'VERA', b'TRUE' ]:
                 return decrypted_header
 
         return None
 
     def encrypt_truecrypt_header(self, header, password, new_salt):
-        xts_cipher = self._get_cipher(password, new_salt, 'ripemd160')
+        xts_cipher = self._get_cipher(password, new_salt, 'sha512')
         cipher = xts_cipher.encryptor()
         encrypted_header = cipher.update(header) + cipher.finalize()
 
