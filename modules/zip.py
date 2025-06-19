@@ -151,25 +151,14 @@ class ZIPHandler(FileHandler):
             offset = file.pos
             size = file.size()
 
-            if first:
-                chunks.append(FixedChunk(
-                    module=self,
-                    position=offset,
-                    size=size,
-                    offset=offset,
-                    data=data,
-                    extra=file,
-                ))
-                first=False
-            else:
-                chunks.append(FlexibleChunk(
-                    module=self,
-                    position=(offset, None),
-                    size=size,
-                    offset=offset,
-                    data=data,
-                    extra=file,
-                ))
+            chunks.append(FlexibleChunk(
+                module=self,
+                position=(0, None),
+                size=size,
+                offset=offset,
+                data=data,
+                extra=file,
+            ))
 
         footer_size = (filesize - eocd.offset)
 
