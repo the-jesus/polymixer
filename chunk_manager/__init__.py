@@ -50,7 +50,9 @@ class ChunkManager(Sequence):
         return [ c for c in chunks if isinstance(c, FixedChunk) ]
 
     def get_flexible_chunks(cls, chunks: Chunk) -> List[FlexibleChunk]:
-        return [ c for c in chunks if isinstance(c, FlexibleChunk) ]
+        flexible_chunks = [ chunk for chunk in chunks if isinstance(chunk, FlexibleChunk) ]
+        flexible_chunks.sort(key=lambda chunk: chunk.size, reverse=True)
+        return flexible_chunks
 
     def get_data_blocks(self) -> Generator[Tuple[int, bytes], None, None]:
         for interval in self.tree:
