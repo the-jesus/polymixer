@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import argparse
 
@@ -44,7 +45,8 @@ def parse_args(registry: ModuleRegistry, hook_manager: HookManager):
         sys.exit()
 
     if args.list_modules:
-        print(registry.get_modules())
+        print('Registered modules:')
+        print('\n'.join(registry.get_modules()))
         sys.exit()
 
     if not args.output:
@@ -102,6 +104,7 @@ def main() -> int:
         place_chunk(chunk_manager, hook_manager, start, chunk)
 
     flexible_chunks = chunk_manager.get_flexible_chunks(chunks)
+
     for chunk in flexible_chunks:
         start = chunk_manager.find_position(chunk)
         place_chunk(chunk_manager, hook_manager, start, chunk)
@@ -114,10 +117,13 @@ def main() -> int:
 
     with open(output, 'wb') as file:
         file.truncate()
-        blocks = chunk_manager.get_data_blocks()
+        blocks = sorted(chunk_manager.get_data_blocks(), key=lambda x: x[0])
+        last_pos = 0
         for (position, block) in blocks:
-            file.seek(position)
+            if position > last_pos:
+                file.write(os.urandom(position - last_pos))
             file.write(block)
+            last_pos = position + len(block)
 
     hook_manager.trigger('writing:finish', output)
 
