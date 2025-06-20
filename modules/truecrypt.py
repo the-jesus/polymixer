@@ -25,6 +25,8 @@ class TruecryptHandler(FileHandler):
         self.header_chunk = None
         self.filepath = args.truecrypt_file
         self.reencrypt_key = args.truecrypt_new_salt
+        self.badblocks_file = args.truecrypt_badblocks_file
+        self.badblocks_size = int(args.truecrypt_badblocks_size or 1024)
         self.vera = args.truecrypt_vera
 
         if self.reencrypt_key and not args.truecrypt_password:
@@ -39,6 +41,8 @@ class TruecryptHandler(FileHandler):
         truecrypt_group.add_argument("--truecrypt-file", nargs=None, help="Specify the source TrueCrypt container.", required=True)
         truecrypt_group.add_argument("--truecrypt-new-salt", action='store_true', help="Enables re-encryption of the key using the specified salt.")
         truecrypt_group.add_argument("--truecrypt-password", nargs=None, help="The password of the TrueCrypt container.")
+        truecrypt_group.add_argument("--truecrypt-badblocks-file", nargs=None, help="File with badblocks of the filesystem.")
+        truecrypt_group.add_argument("--truecrypt-badblocks-size", nargs=None, help="Blocksize of the filesystem.")
         truecrypt_group.add_argument("--truecrypt-vera", action='store_true', help="Support verascript images")
 
     def chunks_placed(self, chunk_manager: ChunkManager) -> None:
@@ -79,7 +83,20 @@ class TruecryptHandler(FileHandler):
         else:
             chunks.append(FixedChunk(position=0, size=512, offset=0, data=data))
 
-        chunks.append(FixedChunk(position=header_size, size=image_size - header_size, offset=header_size, data=data))
+        last_position = header_size
+
+        blocksize = self.badblocks_size
+        last_block = (image_size - header_size) // blocksize
+        for (start, end) in self._get_possible_blocks(self.badblocks_file, last_block):
+            if end * blocksize > image_size:
+                break
+
+            position = header_size + start * blocksize
+            size = (end - start) * blocksize
+
+            chunks.append(FixedChunk(position=position, size=size, offset=position, data=data))
+
+            last_position = position + size
 
         return chunks
 
@@ -108,3 +125,31 @@ class TruecryptHandler(FileHandler):
         encrypted_header = cipher.update(header) + cipher.finalize()
 
         return encrypted_header
+
+    def _get_badblocks_from_file(self, file):
+        if file:
+            with open(file, 'r') as lines:
+                return [ int(bad.strip()) for bad in lines ]
+
+        return []
+
+    def _get_possible_blocks(self, file, last_block):
+        usable_blocks = []
+        last_badblock = -1
+
+        badblocks = self._get_badblocks_from_file(file)
+        badblocks.sort()
+
+        for badblock in badblocks:
+            if badblock - last_badblock == 1:
+                last_badblock = badblock
+                continue
+
+            usable_blocks.append(( last_badblock + 1, badblock - 1))
+
+            last_badblock = badblock
+
+        if last_badblock < last_block:
+            usable_blocks.append(( last_badblock + 1, last_block ))
+
+        return usable_blocks
