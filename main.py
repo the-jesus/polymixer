@@ -7,7 +7,7 @@ import argparse
 from hook_manager import HookManager
 from module_registry import ModuleRegistry
 from chunk_manager import ChunkManager
-from chunk import Chunk
+from chunk import Chunk, FixedChunk, FlexibleChunk
 
 from modules.pdf import PDFHandler
 from modules.zip import ZIPHandler
@@ -98,13 +98,13 @@ def main() -> int:
 
     chunk_manager = ChunkManager()
 
-    fixed_chunks = chunk_manager.get_fixed_chunks(chunks)
+    fixed_chunks = chunk_manager.get_chunks(chunks, FixedChunk)
     for chunk in fixed_chunks:
         start = chunk.position
         place_chunk(chunk_manager, hook_manager, start, chunk)
 
-    flexible_chunks = chunk_manager.get_flexible_chunks(chunks)
-
+    flexible_chunks = chunk_manager.get_chunks(chunks, FlexibleChunk)
+    # sorted_flexible_chunks = sorted(flexible_chunks, key=lambda chunk: chunk.size, reverse=True)
     for chunk in flexible_chunks:
         start = chunk_manager.find_position(chunk)
         place_chunk(chunk_manager, hook_manager, start, chunk)

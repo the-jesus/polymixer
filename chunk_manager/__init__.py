@@ -1,7 +1,9 @@
-from typing import Generator, Tuple, List
+from typing import Generator, Tuple, List, Type, TypeVar
 from intervaltree import IntervalTree
 from chunk import Chunk, FixedChunk, FlexibleChunk
 from collections.abc import Sequence
+
+T = TypeVar('T', bound=Chunk)
 
 class ChunkManager(Sequence):
     def __init__(self):
@@ -46,13 +48,9 @@ class ChunkManager(Sequence):
 
             yield (start, chunk)
 
-    def get_fixed_chunks(cls, chunks: Chunk) -> List[FixedChunk]:
-        return [ c for c in chunks if isinstance(c, FixedChunk) ]
-
-    def get_flexible_chunks(cls, chunks: Chunk) -> List[FlexibleChunk]:
-        flexible_chunks = [ chunk for chunk in chunks if isinstance(chunk, FlexibleChunk) ]
-        flexible_chunks.sort(key=lambda chunk: chunk.size, reverse=True)
-        return flexible_chunks
+    @classmethod
+    def get_chunks(cls: Type['ChunkManager'], chunks: Chunk, type_filter: Type[T]) -> List[T]:
+        return [ c for c in chunks if isinstance(c, type_filter) ]
 
     def get_data_blocks(self) -> Generator[Tuple[int, bytes], None, None]:
         for interval in self.tree:
