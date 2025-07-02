@@ -10,16 +10,6 @@ from hashlib import pbkdf2_hmac
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-def hexdump(data, length=16):
-    result = []
-    for i in range(0, len(data), length):
-        chunk = data[i:i+length]
-        hex_part = ' '.join(f'{byte:02x}' for byte in chunk)
-        ascii_part = ''.join((chr(byte) if 32 <= byte <= 126 else '.') for byte in chunk)
-        result.append(f'{i:08x}  {hex_part:<{length*3}}  {ascii_part}')
-
-    return '\n'.join(result)
-
 class TruecryptHandler(FileHandler):
     def setup(self, args, hook_manager: HookManager):
         self.header_chunk = None
