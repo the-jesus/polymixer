@@ -27,6 +27,7 @@ def parse_args(registry: ModuleRegistry, hook_manager: HookManager):
     global_group = parser.add_argument_group("Global Options")
     global_group.add_argument("-m", "--modules", nargs="+", default=[], help="Specify a module and its arguments.")
     global_group.add_argument("-o", "--output", nargs=None, help="Specify the output file.")
+    global_group.add_argument("-r", "--fill-random", action="store_true", help="Fill gaps with random data.")
     global_group.add_argument("-l", "--list-modules", action="store_true", help="List all registered modules.")
     global_group.add_argument("-h", "--help", action="store_true", help="Show this help message and exit.")
 
@@ -59,7 +60,7 @@ def parse_args(registry: ModuleRegistry, hook_manager: HookManager):
     for module in active_modules:
         module.setup(args, hook_manager)
 
-    return active_modules, args.output
+    return active_modules, args
 
 def place_chunk(
     chunk_manager: ChunkManager,
@@ -90,7 +91,7 @@ def main() -> int:
 
     hook_manager = HookManager()
 
-    modules, output = parse_args(registry, hook_manager)
+    modules, args = parse_args(registry, hook_manager)
 
     chunks = []
     for module in modules:
@@ -113,19 +114,41 @@ def main() -> int:
     for (start, chunk) in end_chunks:
         place_chunk(chunk_manager, hook_manager, start, chunk)
 
+    blocks = sorted(chunk_manager.get_data_blocks(), key=lambda x: x[0])
+
+    last_pos = 0
+    for (position, block) in blocks:
+        size = position - last_pos - 2
+        if size > 0:
+            start = last_pos
+
+            if args.fill_random:
+                fill_data = os.urandom(size)
+            else:
+                fill_data = b'\x00' * size
+
+            chunk = FixedChunk(
+                module="filler",
+                position=start,
+                size=size,
+                offset=0,
+                data=fill_data,
+            )
+
+            chunk_manager.place(start, chunk)
+        last_pos = position + len(block)
+
     hook_manager.trigger('placing:complete', chunk_manager)
 
-    with open(output, 'wb') as file:
+    with open(args.output, 'wb') as file:
         file.truncate()
         blocks = sorted(chunk_manager.get_data_blocks(), key=lambda x: x[0])
         last_pos = 0
         for (position, block) in blocks:
-            if position > last_pos:
-                file.write(os.urandom(position - last_pos))
             file.write(block)
             last_pos = position + len(block)
 
-    hook_manager.trigger('writing:finish', output)
+    hook_manager.trigger('writing:finish', args.output)
 
 if __name__ == "__main__":
     try:
