@@ -1,6 +1,6 @@
 from typing import List
 from file_handler import FileHandler
-from chunk import Chunk, FixedChunk, FlexibleChunk
+from chunk import Chunk, FixedChunk
 from argparse import ArgumentParser
 from hook_manager import HookManager
 from chunk_manager import ChunkManager
@@ -68,10 +68,10 @@ class TruecryptHandler(FileHandler):
         self.old_header = data[64:512]
 
         if self.reencrypt_key:
-            self.header_chunk = FixedChunk(position=64, size=448, offset=64, data=data)
+            self.header_chunk = FixedChunk(module=self, position=64, size=448, offset=64, data=data)
             chunks.append(self.header_chunk)
         else:
-            chunks.append(FixedChunk(position=0, size=512, offset=0, data=data))
+            chunks.append(FixedChunk(module=self, position=0, size=512, offset=0, data=data))
 
         last_position = header_size
 
@@ -84,7 +84,7 @@ class TruecryptHandler(FileHandler):
             position = header_size + start * blocksize
             size = (end - start) * blocksize
 
-            chunks.append(FixedChunk(position=position, size=size, offset=position, data=data))
+            chunks.append(FixedChunk(module=self, position=position, size=size, offset=position, data=data))
 
             last_position = position + size
 
